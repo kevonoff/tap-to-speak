@@ -24,10 +24,13 @@ AAC (augmentative/alternative communication) app for developing children and dis
 - Old app's "lint" script was originally just a typecheck; ESLint (flat config, `eslint.config.js`) has since been added and `npm run lint` now runs `eslint . && tsc --noEmit`. There are existing warnings/errors in the old codebase (a few `any` types, some `setState`-in-effect issues) — not yet cleaned up.
 
 ## Commands
-_Fill in once the Expo project is scaffolded:_
-- `npx expo start` — run dev server
-- `eas build --platform android` / `--platform ios` — store builds
-- `npm run typecheck` — (confirm actual command once ported)
+The Expo app lives in `mobile/`. Run all commands from that directory.
+- `npx expo start` — run dev server (scan QR with Expo Go, or press `a` for an Android emulator)
+- `npx tsc --noEmit` — typecheck
+- `npx expo export --platform android` — bundle-only sanity check (catches Metro/import errors without a device)
+- `eas build --platform android` — store build (not yet configured — needs an EAS account and `eas.json`)
+
+Requires Node 20+ (system Node is 26.5).
 
 ## Env vars
 - `SUPABASE_URL`
@@ -38,8 +41,8 @@ _Fill in once the Expo project is scaffolded:_
 - Commit to main. (Confirm with Kevin whether branch-per-feature is wanted once collaborators or CI are added.)
 
 ## Priorities for this rewrite, in order
-1. Scaffold Expo app, get the static 3x6 grid + tap-to-play working with bundled placeholder audio.
-2. Wire up Supabase auth (login/signup) and a `tiles` table (user_id, image_url, audio_url or tts_text).
-3. Settings screen: image picker + Gemini generation, voice recording, TTS text input — writing to Supabase.
-4. Replace placeholder tiles with live data from Supabase per logged-in user.
-5. EAS build + Play Store submission prep.
+1. ~~Scaffold Expo app, get the static 3x6 grid + tap-to-play working with bundled placeholder audio.~~ Done — plus the full settings screen (image picker, voice recording, TTS text, category color) already wired to on-device storage (AsyncStorage + expo-file-system), ahead of the original ordering, since the source app has no accounts either. AI image generation deferred (built-in symbol picker + device photo picker stand in for now).
+2. Wire up Supabase auth (login/signup) and a `tiles` table (user_id, image_url, audio_url or tts_text). Will also need a migration path for the on-device cards created in step 1.
+3. Add Gemini image generation via a Supabase Edge Function; wire settings screen writes to Supabase instead of local storage.
+4. Replace on-device data with live data from Supabase per logged-in user.
+5. EAS build + Play Store submission prep — confirm React Native 0.86's actual minSdkVersion floor is compatible with the Android 8.0 (API 26) target set in `mobile/app.json`.
