@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # Tap to Speak
 
 AAC (augmentative/alternative communication) app for developing children and disabled people to communicate. User taps an image tile; it speaks a message out loud.
@@ -24,7 +26,7 @@ AAC (augmentative/alternative communication) app for developing children and dis
 - Old app's "lint" script was originally just a typecheck; ESLint (flat config, `eslint.config.js`) has since been added and `npm run lint` now runs `eslint . && tsc --noEmit`. There are existing warnings/errors in the old codebase (a few `any` types, some `setState`-in-effect issues) — not yet cleaned up.
 
 ## Commands
-The Expo app lives in `mobile/`. Run all commands from that directory.
+The Expo app now lives at the repo root (moved up from `mobile/` on 2026-08-01).
 - `npx expo start` — run dev server (scan QR with Expo Go, or press `a` for an Android emulator)
 - `npx tsc --noEmit` — typecheck
 - `npx expo export --platform android` — bundle-only sanity check (catches Metro/import errors without a device)
@@ -45,4 +47,4 @@ Requires Node 20+ (system Node is 26.5).
 2. Wire up Supabase auth (login/signup) and a `tiles` table (user_id, image_url, audio_url or tts_text). Will also need a migration path for the on-device cards created in step 1.
 3. Add Gemini image generation via a Supabase Edge Function; wire settings screen writes to Supabase instead of local storage.
 4. Replace on-device data with live data from Supabase per logged-in user.
-5. EAS build + Play Store submission prep — confirm React Native 0.86's actual minSdkVersion floor is compatible with the Android 8.0 (API 26) target set in `mobile/app.json`.
+5. EAS build + Play Store submission prep — confirm React Native 0.86's actual minSdkVersion floor is compatible with the Android 8.0 (API 26) target set in `app.json`.
