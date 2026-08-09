@@ -7,6 +7,7 @@ import { getAvailableVoices, speakTextTTS } from '../utils/audio';
 import { CardImage } from './CardImage';
 import { CardEditorModal } from './CardEditorModal';
 import type { Voice } from 'expo-speech';
+import { useAuth } from '../context/AuthContext';
 
 interface SettingsScreenProps {
   cards: AACCard[];
@@ -28,6 +29,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [settings, setSettings] = useState<VoiceSettings>(voiceSettings);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [selectedCardForEdit, setSelectedCardForEdit] = useState<AACCard | null>(null);
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = () => {
+    Alert.alert('Sign Out?', 'You can sign back in any time.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: () => signOut() },
+    ]);
+  };
 
   useEffect(() => {
     getAvailableVoices().then(setVoices);
@@ -221,6 +230,21 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             thumbColor="#fff"
           />
         </View>
+      </View>
+
+      {/* ACCOUNT */}
+      <View style={styles.section}>
+        <View style={styles.sectionTitleRow}>
+          <Ionicons name="person-circle-outline" size={18} color="#4F46E5" />
+          <Text style={styles.sectionTitleSmall}>Account</Text>
+        </View>
+
+        {user?.email && <Text style={styles.toggleSubtitle}>Signed in as {user.email}</Text>}
+
+        <Pressable onPress={handleSignOut} style={styles.resetBtn}>
+          <Ionicons name="log-out-outline" size={16} color="#DC2626" />
+          <Text style={styles.resetBtnText}>Sign Out</Text>
+        </Pressable>
       </View>
 
       {/* RESET & BACK */}

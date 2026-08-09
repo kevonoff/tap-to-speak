@@ -14,12 +14,15 @@ import {
 import { Header } from './src/components/Header';
 import { WorkspaceGrid } from './src/components/WorkspaceGrid';
 import { SettingsScreen } from './src/components/SettingsScreen';
+import { AuthScreen } from './src/components/AuthScreen';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 
-export default function App() {
+function AppContent() {
   const [cards, setCards] = useState<AACCard[]>([]);
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
   const [activeScreen, setActiveScreen] = useState<ActiveScreen>('workspace');
   const [isLoading, setIsLoading] = useState(true);
+  const { session, isLoading: isAuthLoading } = useAuth();
 
   useEffect(() => {
     Promise.all([getStoredCards(), getVoiceSettings()]).then(([loadedCards, loadedSettings]) => {
@@ -45,7 +48,7 @@ export default function App() {
     setCards(defaultCards);
   };
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <SafeAreaProvider>
         <SafeAreaView style={styles.loadingScreen}>
@@ -53,6 +56,15 @@ export default function App() {
           <Text style={styles.loadingText}>Loading AAC Workspace...</Text>
           <StatusBar style="light" />
         </SafeAreaView>
+      </SafeAreaProvider>
+    );
+  }
+
+  if (!session) {
+    return (
+      <SafeAreaProvider>
+        <AuthScreen />
+        <StatusBar style="light" />
       </SafeAreaProvider>
     );
   }
@@ -86,6 +98,14 @@ export default function App() {
         <StatusBar style="dark" />
       </View>
     </SafeAreaProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

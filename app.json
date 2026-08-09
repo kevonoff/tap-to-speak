@@ -2,6 +2,7 @@
   "expo": {
     "name": "Tap to Speak",
     "slug": "tap-to-speak",
+    "scheme": "taptospeak",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
@@ -37,7 +38,8 @@
             "minSdkVersion": 26
           }
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 }
