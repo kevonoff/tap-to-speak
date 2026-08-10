@@ -4,6 +4,13 @@ import { File, Paths } from 'expo-file-system';
 // app's permanent document directory, so it survives cache clears and
 // naturally overwrites any previous file for that card + kind.
 function persistFile(sourceUri: string, filenamePrefix: string): string {
+  if (!sourceUri.startsWith('file://')) {
+    // Not a local file to copy — e.g. a value carried over unchanged from a
+    // previous save, or synced down from Supabase Storage on another login.
+    // There's nothing to persist locally; use it as-is.
+    return sourceUri;
+  }
+
   const ext = sourceUri.split('.').pop()?.split('?')[0] || 'dat';
   const dest = new File(Paths.document, `${filenamePrefix}.${ext}`);
 
