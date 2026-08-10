@@ -8,6 +8,7 @@ import { CardImage } from './CardImage';
 import { CardEditorModal } from './CardEditorModal';
 import type { Voice } from 'expo-speech';
 import { useAuth } from '../context/AuthContext';
+import { getColorTheme } from '../utils/cardTheme';
 
 interface SettingsScreenProps {
   cards: AACCard[];
@@ -80,35 +81,38 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </View>
 
         <View style={styles.tileGrid}>
-          {cards.map((card) => (
-            <Pressable
-              key={card.id}
-              onPress={() => setSelectedCardForEdit(card)}
-              style={styles.tile}
-            >
-              <View style={styles.tileHeader}>
-                <Text style={styles.tilePosition}>#{card.position}</Text>
-                <View style={[styles.tileBadge, card.audioUri ? styles.tileBadgeAmber : styles.tileBadgeIndigo]}>
-                  <Ionicons
-                    name={card.audioUri ? 'mic' : 'volume-high'}
-                    size={10}
-                    color={card.audioUri ? '#92400E' : '#3730A3'}
-                  />
-                  <Text style={[styles.tileBadgeText, { color: card.audioUri ? '#92400E' : '#3730A3' }]}>
-                    {card.audioUri ? 'Voice' : 'TTS'}
-                  </Text>
+          {cards.map((card) => {
+            const theme = getColorTheme(card.bgColor);
+            return (
+              <Pressable
+                key={card.id}
+                onPress={() => setSelectedCardForEdit(card)}
+                style={[styles.tile, { backgroundColor: theme.bg, borderColor: theme.border }]}
+              >
+                <View style={styles.tileHeader}>
+                  <Text style={styles.tilePosition}>#{card.position}</Text>
+                  <View style={[styles.tileBadge, card.audioUri ? styles.tileBadgeAmber : styles.tileBadgeIndigo]}>
+                    <Ionicons
+                      name={card.audioUri ? 'mic' : 'volume-high'}
+                      size={10}
+                      color={card.audioUri ? '#92400E' : '#3730A3'}
+                    />
+                    <Text style={[styles.tileBadgeText, { color: card.audioUri ? '#92400E' : '#3730A3' }]}>
+                      {card.audioUri ? 'Voice' : 'TTS'}
+                    </Text>
+                  </View>
                 </View>
-              </View>
 
-              <View style={styles.tileImageWrap}>
-                <CardImage uri={card.imageUri} />
-              </View>
+                <View style={styles.tileImageWrap}>
+                  <CardImage uri={card.imageUri} />
+                </View>
 
-              <Text style={styles.tileLabel} numberOfLines={1}>
-                {card.label}
-              </Text>
-            </Pressable>
-          ))}
+                <Text style={styles.tileLabel} numberOfLines={1}>
+                  {card.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 

@@ -26,7 +26,9 @@ export const WorkspaceGrid: React.FC<WorkspaceGridProps> = ({
 
   const handleCardTap = (card: AACCard) => {
     setSpeakingCardId(card.id);
-    setActiveCardText(card.spokenText || card.label);
+    // Only show the caption toast for TTS playback — a pre-recorded voice
+    // message doesn't need its text echoed on screen.
+    setActiveCardText(card.audioUri ? null : card.spokenText || card.label);
 
     speakAACCard(
       card.spokenText || card.label,

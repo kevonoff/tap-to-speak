@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AACCard } from '../types';
 import { INITIAL_18_CARDS } from '../data/defaultCards';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
@@ -45,6 +46,7 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
   const [imageUri, setImageUri] = useState(card.imageUri);
   const [bgColor, setBgColor] = useState(card.bgColor || '#3B82F6');
   const [audioMode, setAudioMode] = useState<'tts' | 'recorded'>(card.audioUri ? 'recorded' : 'tts');
+  const insets = useSafeAreaInsets();
 
   const {
     isRecording,
@@ -83,8 +85,13 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
       quality: 0.8,
     });
     if (!result.canceled && result.assets?.[0]?.uri) {
-      const persisted = persistCardImage(result.assets[0].uri, card.position);
-      setImageUri(persisted);
+      try {
+        const persisted = persistCardImage(result.assets[0].uri, card.position);
+        setImageUri(persisted);
+      } catch (err) {
+        console.warn('Failed to save picked photo:', err);
+        Alert.alert('Could not use that photo', 'Please try picking the photo again.');
+      }
     }
   };
 
@@ -111,13 +118,13 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
 
   return (
     <Modal visible={isOpen} animationType="slide" onRequestClose={onClose} presentationStyle="pageSheet">
-      <View style={styles.modalHeader}>
+      <View style={[styles.modalHeader, { paddingTop: insets.top + 16 }]}>
         <View style={styles.modalHeaderLeft}>
           <View style={styles.posBadge}>
             <Text style={styles.posBadgeText}>#{card.position}</Text>
           </View>
           <View>
-            <Text style={styles.modalTitle}>Edit Card Position #{card.position}</Text>
+            <Text style={styles.modalTitle}>Edit Card #{card.position}</Text>
             <Text style={styles.modalSubtitle}>Customize image and speech output</Text>
           </View>
         </View>
@@ -148,7 +155,7 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
           </View>
 
           <View style={styles.imagePreviewRow}>
-            <View style={styles.imagePreviewBox}>
+            <View style={[styles.imagePreviewBox, { borderColor: bgColor }]}>
               <CardImage uri={imageUri} />
             </View>
             <Text style={styles.imagePreviewHint}>
@@ -258,16 +265,14 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
                       {isRecording
                         ? `Recording... (${recordingTime}s)`
                         : audioUri
-                        ? 'Voice Audio Recorded!'
+                        ? 'Recorded'
                         : 'No Voice Recorded Yet'}
                     </Text>
-                    <Text style={styles.recordStatusSubtitle}>
-                      {isRecording
-                        ? 'Speak clearly into your microphone'
-                        : audioUri
-                        ? 'Ready to use on card tap'
-                        : 'Press record to capture voice'}
-                    </Text>
+                    {!(audioUri && !isRecording) && (
+                      <Text style={styles.recordStatusSubtitle}>
+                        {isRecording ? 'Speak clearly into your microphone' : 'Press record to capture voice'}
+                      </Text>
+                    )}
                   </View>
                 </View>
 
