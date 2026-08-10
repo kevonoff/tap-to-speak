@@ -168,11 +168,6 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
             <Text style={styles.pickPhotoBtnText}>Choose Photo from Device</Text>
           </Pressable>
 
-          <View style={styles.aiComingSoon}>
-            <Ionicons name="sparkles-outline" size={14} color="#9CA3AF" />
-            <Text style={styles.aiComingSoonText}>AI image generation — coming soon</Text>
-          </View>
-
           <Text style={styles.fieldLabel}>Or Choose a Built-in Symbol</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {INITIAL_18_CARDS.map((preset) => (
@@ -403,8 +398,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   pickPhotoBtnText: { fontSize: 12, fontWeight: '700', color: '#92400E' },
-  aiComingSoon: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: 0.6 },
-  aiComingSoonText: { fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' },
   presetThumb: {
     width: 56,
     height: 56,
