@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import {
   saveVoiceSettings,
   DEFAULT_SETTINGS,
 } from './src/utils/storage';
+import { syncTilesOnLogin, pushCardToSupabase, pushCardsToSupabase } from './src/utils/tilesSync';
 import { Header } from './src/components/Header';
 import { WorkspaceGrid } from './src/components/WorkspaceGrid';
 import { SettingsScreen } from './src/components/SettingsScreen';
@@ -22,7 +23,9 @@ function AppContent() {
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
   const [activeScreen, setActiveScreen] = useState<ActiveScreen>('workspace');
   const [isLoading, setIsLoading] = useState(true);
-  const { session, isLoading: isAuthLoading } = useAuth();
+  const [isSyncingTiles, setIsSyncingTiles] = useState(false);
+  const { session, user, isLoading: isAuthLoading } = useAuth();
+  const syncedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     Promise.all([getStoredCards(), getVoiceSettings()]).then(([loadedCards, loadedSettings]) => {
@@ -32,10 +35,41 @@ function AppContent() {
     });
   }, []);
 
+  // Runs once per sign-in: seeds Supabase from this device on a first login,
+  // or pulls existing tiles down to replace local state on a returning one.
+  useEffect(() => {
+    if (isLoading || !user || syncedUserIdRef.current === user.id) return;
+    syncedUserIdRef.current = user.id;
+    setIsSyncingTiles(true);
+    syncTilesOnLogin(user.id, cards)
+      .then(setCards)
+      .catch((err) => console.warn('Tile sync failed:', err))
+      .finally(() => setIsSyncingTiles(false));
+  }, [isLoading, user, cards]);
+
   const handleUpdateCard = (updatedCard: AACCard) => {
     const newCards = cards.map((c) => (c.id === updatedCard.id ? updatedCard : c));
     setCards(newCards);
     saveStoredCards(newCards);
+    if (user) {
+      pushCardToSupabase(user.id, updatedCard)
+        .then((updatedAt) => {
+          if (!updatedAt) return;
+          // Stamp the row's new updated_at locally so this device's next
+          // login recognizes this as its own edit, not a remote change, and
+          // keeps trusting its local file instead of needlessly re-fetching it.
+          setCards((prev) => {
+            const stamped = prev.map((c) =>
+              c.position === updatedCard.position ? { ...c, lastSyncedUpdatedAt: updatedAt } : c
+            );
+            saveStoredCards(stamped);
+            return stamped;
+          });
+        })
+        .catch(() => {
+          // Already logged in pushCardToSupabase; local save above already succeeded either way.
+        });
+    }
   };
 
   const handleUpdateSettings = (newSettings: VoiceSettings) => {
@@ -46,9 +80,25 @@ function AppContent() {
   const handleResetCards = async () => {
     const defaultCards = await resetCardsToDefault();
     setCards(defaultCards);
+    if (user) {
+      pushCardsToSupabase(user.id, defaultCards)
+        .then((updatedAtByPosition) => {
+          setCards((prev) => {
+            const stamped = prev.map((c) => ({
+              ...c,
+              lastSyncedUpdatedAt: updatedAtByPosition.get(c.position) ?? c.lastSyncedUpdatedAt,
+            }));
+            saveStoredCards(stamped);
+            return stamped;
+          });
+        })
+        .catch(() => {
+          // Already logged in pushCardsToSupabase; local reset above already succeeded either way.
+        });
+    }
   };
 
-  if (isLoading || isAuthLoading) {
+  if (isLoading || isAuthLoading || isSyncingTiles) {
     return (
       <SafeAreaProvider>
         <SafeAreaView style={styles.loadingScreen}>

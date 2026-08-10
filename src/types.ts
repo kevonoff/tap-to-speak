@@ -7,6 +7,10 @@ export interface AACCard {
   audioUri?: string | null; // Persisted recording file:// URI if user recorded voice
   category?: 'need' | 'feeling' | 'action' | 'person' | 'social';
   bgColor?: string; // High contrast background color code for card
+  // Bookkeeping only, not user-facing: the tiles row's updated_at as of the
+  // last successful sync, used to detect whether it changed on another
+  // device since. See src/utils/tilesSync.ts.
+  lastSyncedUpdatedAt?: string | null;
 }
 
 export interface VoiceSettings {
