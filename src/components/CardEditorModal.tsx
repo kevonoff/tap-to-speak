@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -9,15 +9,15 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AACCard } from '../types';
 import { INITIAL_18_CARDS } from '../data/defaultCards';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { speakTextTTS } from '../utils/audio';
-import { persistCardImage, persistCardAudio } from '../utils/mediaStorage';
+import { persistCardImageToLocalFilesystem, persistCardAudioToLocalFilesystem as persistCardAudioToLocalFilesystem } from '../utils/localStorage';
 import { CardImage } from './CardImage';
+import { ImagePickerMenu } from './ImagePickerMenu'
 
 interface CardEditorModalProps {
   card: AACCard;
@@ -52,42 +52,51 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
     isRecording,
     recordingTime,
     audioUri,
-    setAudioUri,
     error: recorderError,
     startRecording,
     stopRecording,
     clearRecording,
     playPreview,
-  } = useAudioRecorder();
+  } = useAudioRecorder(card.audioUri || null);
 
-  useEffect(() => {
-    if (isOpen) {
-      setLabel(card.label);
-      setSpokenText(card.spokenText || card.label);
-      setImageUri(card.imageUri);
-      setBgColor(card.bgColor || '#3B82F6');
-      setAudioUri(card.audioUri || null);
-      setAudioMode(card.audioUri ? 'recorded' : 'tts');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [card, isOpen]);
+  // Every edit auto-saves as it happens — there's no separate Save button.
+  // Callers pass only the field(s) that just changed; everything else falls
+  // back to current state. Text fields pass an override synchronously from
+  // the event itself (not from state) to avoid acting on a stale value from
+  // before this render's setState took effect.
+  const commitCard = (
+    overrides: Partial<Pick<AACCard, 'label' | 'spokenText' | 'imageUri' | 'audioUri' | 'bgColor'>> = {}
+  ) => {
+    const finalLabel = overrides.label ?? label;
+    const finalSpokenText = overrides.spokenText ?? spokenText;
+    const updatedCard: AACCard = {
+      ...card,
+      label: finalLabel.trim() || 'Custom Card',
+      spokenText: finalSpokenText.trim() || finalLabel.trim() || 'Custom Card',
+      imageUri: overrides.imageUri ?? imageUri,
+      audioUri: 'audioUri' in overrides ? overrides.audioUri ?? null : audioMode === 'recorded' ? audioUri : null,
+      bgColor: overrides.bgColor ?? bgColor,
+    };
+    onSave(updatedCard);
+  };
 
-  const handlePickPhoto = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission needed', 'Please allow photo library access to pick a picture.');
-      return;
+  // Safety net for the two text fields: onBlur covers the normal case, but
+  // this catches an edit that never blurred (e.g. closing mid-edit). Skipped
+  // when neither text field actually changed, so just opening and closing a
+  // card without editing anything doesn't trigger a save.
+  const handleClose = () => {
+    if (label !== card.label || spokenText !== (card.spokenText || card.label)) {
+      commitCard();
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets?.[0]?.uri) {
+    onClose();
+  };
+
+  const handlePickPhoto = async (uri: string) => {
+    if (uri) {
       try {
-        const persisted = persistCardImage(result.assets[0].uri, card.position);
+        const persisted = persistCardImageToLocalFilesystem(uri, card.position);
         setImageUri(persisted);
+        commitCard({ imageUri: persisted });
       } catch (err) {
         console.warn('Failed to save picked photo:', err);
         Alert.alert('Could not use that photo', 'Please try picking the photo again.');
@@ -99,25 +108,21 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
     speakTextTTS(spokenText || label);
   };
 
-  const handleSave = () => {
-    let finalAudioUri: string | null = null;
-    if (audioMode === 'recorded' && audioUri) {
-      finalAudioUri = persistCardAudio(audioUri, card.position);
+  const handleStopRecording = async () => {
+    const uri = await stopRecording();
+    if (uri) {
+      const persisted = persistCardAudioToLocalFilesystem(uri, card.position);
+      commitCard({ audioUri: persisted });
     }
+  };
 
-    const updatedCard: AACCard = {
-      ...card,
-      label: label.trim() || 'Custom Card',
-      spokenText: spokenText.trim() || label.trim() || 'Custom Card',
-      imageUri,
-      audioUri: finalAudioUri,
-      bgColor,
-    };
-    onSave(updatedCard);
+  const handleClearRecording = () => {
+    clearRecording();
+    commitCard({ audioUri: null });
   };
 
   return (
-    <Modal visible={isOpen} animationType="slide" onRequestClose={onClose} presentationStyle="pageSheet">
+    <Modal visible={isOpen} animationType="slide" onRequestClose={handleClose} presentationStyle="pageSheet">
       <View style={[styles.modalHeader, { paddingTop: insets.top + 16 }]}>
         <View style={styles.modalHeaderLeft}>
           <View style={styles.posBadge}>
@@ -128,7 +133,7 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
             <Text style={styles.modalSubtitle}>Customize image and speech output</Text>
           </View>
         </View>
-        <Pressable onPress={onClose} hitSlop={10}>
+        <Pressable onPress={handleClose} hitSlop={10}>
           <Ionicons name="close" size={24} color="#9CA3AF" />
         </Pressable>
       </View>
@@ -142,6 +147,7 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
               setLabel(text);
               if (!spokenText || spokenText === label) setSpokenText(text);
             }}
+            onBlur={() => commitCard()}
             placeholder="e.g. Water, Apple, Hug, Toilet"
             style={styles.input}
           />
@@ -163,17 +169,17 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
             </Text>
           </View>
 
-          <Pressable onPress={handlePickPhoto} style={styles.pickPhotoBtn}>
-            <Ionicons name="cloud-upload-outline" size={16} color="#92400E" />
-            <Text style={styles.pickPhotoBtnText}>Choose Photo from Device</Text>
-          </Pressable>
+          <ImagePickerMenu onSelectPicture={(uri: string) => { handlePickPhoto(uri)}}></ImagePickerMenu>
 
           <Text style={styles.fieldLabel}>Or Choose a Built-in Symbol</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {INITIAL_18_CARDS.map((preset) => (
               <Pressable
                 key={preset.id}
-                onPress={() => setImageUri(preset.imageUri)}
+                onPress={() => {
+                  setImageUri(preset.imageUri);
+                  commitCard({ imageUri: preset.imageUri });
+                }}
                 style={[
                   styles.presetThumb,
                   imageUri === preset.imageUri && styles.presetThumbActive,
@@ -222,6 +228,7 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
                 <TextInput
                   value={spokenText}
                   onChangeText={setSpokenText}
+                  onBlur={() => commitCard()}
                   placeholder="e.g. I want to drink a cup of water please"
                   style={[styles.input, { flex: 1 }]}
                 />
@@ -236,7 +243,7 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
           {audioMode === 'recorded' && (
             <View style={styles.ttsBox}>
               <Text style={styles.fieldLabelSmall}>
-                Record a parent, teacher, or child's voice for familiar speech playback.
+                Record a parent, teacher, or child&apos;s voice for familiar speech playback.
               </Text>
 
               {recorderError && <Text style={styles.errorText}>{recorderError}</Text>}
@@ -273,7 +280,7 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
 
                 <View style={styles.recordActions}>
                   {isRecording ? (
-                    <Pressable onPress={stopRecording} style={styles.stopBtn}>
+                    <Pressable onPress={handleStopRecording} style={styles.stopBtn}>
                       <Ionicons name="square" size={14} color="#fff" />
                       <Text style={styles.stopBtnText}>Stop</Text>
                     </Pressable>
@@ -288,7 +295,7 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
                       <Pressable onPress={playPreview} style={styles.iconBtn}>
                         <Ionicons name="play" size={16} color="#059669" />
                       </Pressable>
-                      <Pressable onPress={clearRecording} style={styles.iconBtn}>
+                      <Pressable onPress={handleClearRecording} style={styles.iconBtn}>
                         <Ionicons name="trash-outline" size={16} color="#6B7280" />
                       </Pressable>
                     </>
@@ -306,7 +313,10 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
             {COLOR_OPTIONS.map((item) => (
               <Pressable
                 key={item.color}
-                onPress={() => setBgColor(item.color)}
+                onPress={() => {
+                  setBgColor(item.color);
+                  commitCard({ bgColor: item.color });
+                }}
                 style={[
                   styles.colorSwatch,
                   { backgroundColor: item.color },
@@ -317,16 +327,6 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
           </View>
         </View>
       </ScrollView>
-
-      <View style={styles.footer}>
-        <Pressable onPress={onClose} style={styles.cancelBtn}>
-          <Text style={styles.cancelBtnText}>Cancel</Text>
-        </Pressable>
-        <Pressable onPress={handleSave} style={styles.saveBtn}>
-          <Ionicons name="checkmark" size={16} color="#fff" />
-          <Text style={styles.saveBtnText}>Save Changes</Text>
-        </Pressable>
-      </View>
     </Modal>
   );
 };
@@ -386,18 +386,6 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   imagePreviewHint: { flex: 1, fontSize: 11, color: '#6B7280' },
-  pickPhotoBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: 14,
-    paddingVertical: 10,
-  },
-  pickPhotoBtnText: { fontSize: 12, fontWeight: '700', color: '#92400E' },
   presetThumb: {
     width: 56,
     height: 56,
@@ -434,16 +422,4 @@ const styles = StyleSheet.create({
   colorRow: { flexDirection: 'row', gap: 10 },
   colorSwatch: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: 'transparent' },
   colorSwatchActive: { borderColor: '#111827', transform: [{ scale: 1.15 }] },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  cancelBtn: { paddingHorizontal: 16, paddingVertical: 10 },
-  cancelBtnText: { fontSize: 13, fontWeight: '700', color: '#6B7280' },
-  saveBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#4F46E5', borderRadius: 14, paddingHorizontal: 20, paddingVertical: 12 },
-  saveBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
 });

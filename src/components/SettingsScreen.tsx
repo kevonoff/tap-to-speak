@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, StyleSheet, Alert } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
-import { AACCard, VoiceSettings } from '../types';
+import { AACCard, BaseSettings } from '../types';
 import { getAvailableVoices, speakTextTTS } from '../utils/audio';
 import { CardImage } from './CardImage';
 import { CardEditorModal } from './CardEditorModal';
@@ -13,8 +13,8 @@ import { getColorTheme } from '../utils/cardTheme';
 interface SettingsScreenProps {
   cards: AACCard[];
   onUpdateCard: (updatedCard: AACCard) => void;
-  voiceSettings: VoiceSettings;
-  onUpdateSettings: (newSettings: VoiceSettings) => void;
+  baseSettings: BaseSettings;
+  onUpdateSettings: (newSettings: BaseSettings) => void;
   onResetCards: () => void;
   onBack: () => void;
 }
@@ -22,12 +22,12 @@ interface SettingsScreenProps {
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   cards,
   onUpdateCard,
-  voiceSettings,
+  baseSettings: baseSettings,
   onUpdateSettings,
   onResetCards,
   onBack,
 }) => {
-  const [settings, setSettings] = useState<VoiceSettings>(voiceSettings);
+  const [settings, setSettings] = useState<BaseSettings>(baseSettings);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [selectedCardForEdit, setSelectedCardForEdit] = useState<AACCard | null>(null);
   const { user, signOut } = useAuth();
@@ -43,7 +43,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     getAvailableVoices().then(setVoices);
   }, []);
 
-  const handleChange = <K extends keyof VoiceSettings>(key: K, value: VoiceSettings[K]) => {
+  const handleChange = <K extends keyof BaseSettings>(key: K, value: BaseSettings[K]) => {
     const updated = { ...settings, [key]: value };
     setSettings(updated);
     onUpdateSettings(updated);

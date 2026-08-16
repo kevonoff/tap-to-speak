@@ -15,7 +15,7 @@ export const CardImage: React.FC<CardImageProps> = ({ uri }) => {
     let xml = encoded;
     try {
       xml = decodeURIComponent(encoded);
-    } catch (e) {
+    } catch {
       // Fall through with raw string if decoding fails
     }
     return <SvgXml xml={xml} width="100%" height="100%" />;

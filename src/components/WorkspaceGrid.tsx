@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
-import { AACCard, VoiceSettings } from '../types';
+import { AACCard, BaseSettings } from '../types';
 import { AACCardItem } from './AACCardItem';
 import { speakAACCard } from '../utils/audio';
 
 interface WorkspaceGridProps {
   cards: AACCard[];
-  voiceSettings: VoiceSettings;
+  baseSettings: BaseSettings;
   highContrast?: boolean;
 }
 
 export const WorkspaceGrid: React.FC<WorkspaceGridProps> = ({
   cards,
-  voiceSettings,
+  baseSettings: baseSettings,
   highContrast = false,
 }) => {
   const { width, height } = useWindowDimensions();
@@ -33,7 +33,7 @@ export const WorkspaceGrid: React.FC<WorkspaceGridProps> = ({
     speakAACCard(
       card.spokenText || card.label,
       card.audioUri,
-      voiceSettings,
+      baseSettings,
       () => setSpeakingCardId(card.id),
       () => {
         setSpeakingCardId(null);
@@ -59,7 +59,7 @@ export const WorkspaceGrid: React.FC<WorkspaceGridProps> = ({
                   onSelect={handleCardTap}
                   isSpeaking={speakingCardId === card.id}
                   highContrast={highContrast}
-                  showCardLabels={voiceSettings.showCardLabels !== false}
+                  showCardLabels={baseSettings.showCardLabels !== false}
                 />
               </View>
             ))}
@@ -70,7 +70,7 @@ export const WorkspaceGrid: React.FC<WorkspaceGridProps> = ({
       {activeCardText && (
         <View style={styles.toast}>
           <Text style={styles.toastText} numberOfLines={1}>
-            "{activeCardText}"
+            &quot;{activeCardText}&quot;
           </Text>
         </View>
       )}

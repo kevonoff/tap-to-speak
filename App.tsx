@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { AACCard, VoiceSettings, ActiveScreen } from './src/types';
+import { AACCard, BaseSettings, ActiveScreen } from './src/types';
 import {
   getStoredCards,
   saveStoredCards,
   resetCardsToDefault,
-  getVoiceSettings,
-  saveVoiceSettings,
+  getBaseSettings,
+  saveBaseSettings,
   DEFAULT_SETTINGS,
 } from './src/utils/storage';
 import { syncTilesOnLogin, pushCardToSupabase, pushCardsToSupabase } from './src/utils/tilesSync';
@@ -20,7 +20,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 
 function AppContent() {
   const [cards, setCards] = useState<AACCard[]>([]);
-  const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>(DEFAULT_SETTINGS);
+  const [baseSettings, setBaseSettings] = useState<BaseSettings>(DEFAULT_SETTINGS);
   const [activeScreen, setActiveScreen] = useState<ActiveScreen>('workspace');
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncingTiles, setIsSyncingTiles] = useState(false);
@@ -28,9 +28,9 @@ function AppContent() {
   const syncedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    Promise.all([getStoredCards(), getVoiceSettings()]).then(([loadedCards, loadedSettings]) => {
+    Promise.all([getStoredCards(), getBaseSettings()]).then(([loadedCards, loadedSettings]) => {
       setCards(loadedCards);
-      setVoiceSettings(loadedSettings);
+      setBaseSettings(loadedSettings);
       setIsLoading(false);
     });
   }, []);
@@ -72,9 +72,9 @@ function AppContent() {
     }
   };
 
-  const handleUpdateSettings = (newSettings: VoiceSettings) => {
-    setVoiceSettings(newSettings);
-    saveVoiceSettings(newSettings);
+  const handleUpdateSettings = (newSettings: BaseSettings) => {
+    setBaseSettings(newSettings);
+    saveBaseSettings(newSettings);
   };
 
   const handleResetCards = async () => {
@@ -128,8 +128,8 @@ function AppContent() {
           {activeScreen === 'workspace' && (
             <WorkspaceGrid
               cards={cards}
-              voiceSettings={voiceSettings}
-              highContrast={voiceSettings.highContrastMode}
+              baseSettings={baseSettings}
+              highContrast={baseSettings.highContrastMode}
             />
           )}
 
@@ -137,7 +137,7 @@ function AppContent() {
             <SettingsScreen
               cards={cards}
               onUpdateCard={handleUpdateCard}
-              voiceSettings={voiceSettings}
+              baseSettings={baseSettings}
               onUpdateSettings={handleUpdateSettings}
               onResetCards={handleResetCards}
               onBack={() => setActiveScreen('workspace')}

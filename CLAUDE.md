@@ -21,7 +21,7 @@ AAC (augmentative/alternative communication) app for developing children and dis
 
 ## Known constraints carried over from the MVP (verify still true / decide whether to keep)
 - Grid was hard-coded to exactly 18 tiles (3x6) — decide now whether to keep this fixed or make it configurable (a bigger/smaller grid could be a monetizable tier later — flag but don't build yet).
-- Old app's "lint" script was originally just a typecheck; ESLint (flat config, `eslint.config.js`) has since been added and `npm run lint` now runs `eslint . && tsc --noEmit`. There are existing warnings/errors in the old codebase (a few `any` types, some `setState`-in-effect issues) — not yet cleaned up.
+- Old app's "lint" script was originally just a typecheck; ESLint (flat config, `eslint.config.js`, scaffolded via `npx expo lint` on 2026-08-16) has since been added and `npm run lint` now runs `expo lint && tsc --noEmit`. Clean as of 2026-08-16.
 
 ## Commands
 The Expo app now lives at the repo root (moved up from `mobile/` on 2026-08-01).

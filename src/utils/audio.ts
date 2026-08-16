@@ -1,7 +1,7 @@
 import { createAudioPlayer, AudioPlayer } from 'expo-audio';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
-import { VoiceSettings } from '../types';
+import { BaseSettings } from '../types';
 
 let currentPlayer: AudioPlayer | null = null;
 
@@ -10,7 +10,7 @@ function stopCurrent() {
     try {
       currentPlayer.pause();
       currentPlayer.remove();
-    } catch (e) {
+    } catch {
       // Ignore if already released
     }
     currentPlayer = null;
@@ -21,7 +21,7 @@ function stopCurrent() {
 export function speakAACCard(
   spokenText: string,
   audioUri: string | null | undefined,
-  settings?: VoiceSettings,
+  settings?: BaseSettings,
   onStart?: () => void,
   onEnd?: () => void
 ) {
@@ -61,7 +61,7 @@ export function speakAACCard(
 
 export function speakTextTTS(
   text: string,
-  settings?: VoiceSettings,
+  settings?: BaseSettings,
   onStart?: () => void,
   onEnd?: () => void
 ) {
@@ -82,7 +82,7 @@ export function speakTextTTS(
 export async function getAvailableVoices(): Promise<Speech.Voice[]> {
   try {
     return await Speech.getAvailableVoicesAsync();
-  } catch (e) {
+  } catch {
     return [];
   }
 }

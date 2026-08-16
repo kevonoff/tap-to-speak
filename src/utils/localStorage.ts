@@ -3,7 +3,7 @@ import { File, Paths } from 'expo-file-system';
 // Persists a picker/recording result into a stable per-card filename in the
 // app's permanent document directory, so it survives cache clears and
 // naturally overwrites any previous file for that card + kind.
-function persistFile(sourceUri: string, filenamePrefix: string): string {
+function persistFileToLocalFilesystem(sourceUri: string, filenamePrefix: string): string {
   if (!sourceUri.startsWith('file://')) {
     // Not a local file to copy — e.g. a value carried over unchanged from a
     // previous save, or synced down from Supabase Storage on another login.
@@ -25,15 +25,15 @@ function persistFile(sourceUri: string, filenamePrefix: string): string {
   return dest.uri;
 }
 
-export function persistCardImage(sourceUri: string, position: number): string {
-  return persistFile(sourceUri, `card-${position}-image`);
+export function persistCardImageToLocalFilesystem(sourceUri: string, position: number): string {
+  return persistFileToLocalFilesystem(sourceUri, `card-${position}-image`);
 }
 
-export function persistCardAudio(sourceUri: string, position: number): string {
-  return persistFile(sourceUri, `card-${position}-audio`);
+export function persistCardAudioToLocalFilesystem(sourceUri: string, position: number): string {
+  return persistFileToLocalFilesystem(sourceUri, `card-${position}-audio`);
 }
 
-export function deleteCardAudio(position: number, extHint?: string): void {
+export function deleteCardAudioFromLocalFilesystem(position: number, extHint?: string): void {
   const ext = extHint || 'm4a';
   const file = new File(Paths.document, `card-${position}-audio.${ext}`);
   if (file.exists) {

@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AACCard, VoiceSettings } from '../types';
+import { AACCard, BaseSettings } from '../types';
 import { INITIAL_18_CARDS } from '../data/defaultCards';
 
-const CARDS_STORAGE_KEY = 'aac_express_cards_v1';
-const SETTINGS_STORAGE_KEY = 'aac_express_voice_settings_v1';
+const CARDS_STORAGE_KEY = 'Tap_To_Speak_Cards_v1';
+const SETTINGS_STORAGE_KEY = 'Tap_To_Speak_Base_Settings_v1';
 
-export const DEFAULT_SETTINGS: VoiceSettings = {
+export const DEFAULT_SETTINGS: BaseSettings = {
   rate: 0.85, // Slower rate ideal for developing kids & speech development
   pitch: 1.0,
   volume: 1.0,
@@ -42,7 +42,7 @@ export async function resetCardsToDefault(): Promise<AACCard[]> {
   return INITIAL_18_CARDS;
 }
 
-export async function getVoiceSettings(): Promise<VoiceSettings> {
+export async function getBaseSettings(): Promise<BaseSettings> {
   try {
     const json = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
     if (json) {
@@ -54,7 +54,7 @@ export async function getVoiceSettings(): Promise<VoiceSettings> {
   return DEFAULT_SETTINGS;
 }
 
-export async function saveVoiceSettings(settings: VoiceSettings): Promise<void> {
+export async function saveBaseSettings(settings: BaseSettings): Promise<void> {
   try {
     await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
   } catch (e) {

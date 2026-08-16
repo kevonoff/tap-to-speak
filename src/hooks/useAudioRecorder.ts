@@ -8,11 +8,11 @@ import {
   createAudioPlayer,
 } from 'expo-audio';
 
-export function useAudioRecorder() {
+export function useAudioRecorder(initialUri: string | null = null) {
   const recorder = useExpoAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder, 250);
 
-  const [audioUri, setAudioUri] = useState<string | null>(null);
+  const [audioUri, setAudioUri] = useState<string | null>(initialUri);
   const [error, setError] = useState<string | null>(null);
 
   const startRecording = useCallback(async () => {
@@ -32,15 +32,18 @@ export function useAudioRecorder() {
     }
   }, [recorder]);
 
-  const stopRecording = useCallback(async () => {
+  const stopRecording = useCallback(async (): Promise<string | null> => {
     try {
       await recorder.stop();
       if (recorder.uri) {
         setAudioUri(recorder.uri);
+        return recorder.uri;
       }
+      return null;
     } catch (err: any) {
       console.error('Error stopping recording:', err);
       setError(err?.message || 'Could not stop recording');
+      return null;
     }
   }, [recorder]);
 
