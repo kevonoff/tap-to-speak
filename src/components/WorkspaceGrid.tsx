@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
-import { AACCard, BaseSettings } from '../types';
-import { AACCardItem } from './AACCardItem';
-import { speakAACCard } from '../utils/audio';
+import { BaseSettings } from '../types';
+import { TileCard } from '../models/TileCard';
+import { TileCardWorkspaceItem } from './TileCardWorkspaceItem';
 
 interface WorkspaceGridProps {
-  cards: AACCard[];
+  cards: TileCard[];
   baseSettings: BaseSettings;
   highContrast?: boolean;
 }
 
 export const WorkspaceGrid: React.FC<WorkspaceGridProps> = ({
   cards,
-  baseSettings: baseSettings,
+  baseSettings,
   highContrast = false,
 }) => {
   const { width, height } = useWindowDimensions();
@@ -21,28 +21,27 @@ export const WorkspaceGrid: React.FC<WorkspaceGridProps> = ({
   const columns = width > height ? 6 : 3;
   const rows = 18 / columns;
 
-  const [speakingCardId, setSpeakingCardId] = useState<string | null>(null);
+  const [speakingPosition, setSpeakingPosition] = useState<number | null>(null);
   const [activeCardText, setActiveCardText] = useState<string | null>(null);
 
-  const handleCardTap = (card: AACCard) => {
-    setSpeakingCardId(card.id);
+  const handleCardTap = (card: TileCard) => {
+    setSpeakingPosition(card.position);
     // Only show the caption toast for TTS playback — a pre-recorded voice
     // message doesn't need its text echoed on screen.
-    setActiveCardText(card.audioUri ? null : card.spokenText || card.label);
+    setActiveCardText(card.hasRecording ? null : card.displaySpokenText);
 
-    speakAACCard(
-      card.spokenText || card.label,
-      card.audioUri,
+    card.PlayAudio(
       baseSettings,
-      () => setSpeakingCardId(card.id),
+      () => setSpeakingPosition(card.position),
       () => {
-        setSpeakingCardId(null);
+        setSpeakingPosition(null);
         setActiveCardText(null);
       }
+    
     );
   };
 
-  const rowsData: AACCard[][] = [];
+  const rowsData: TileCard[][] = [];
   for (let r = 0; r < rows; r++) {
     rowsData.push(cards.slice(r * columns, r * columns + columns));
   }
@@ -53,11 +52,11 @@ export const WorkspaceGrid: React.FC<WorkspaceGridProps> = ({
         {rowsData.map((rowCards, i) => (
           <View key={i} style={styles.row}>
             {rowCards.map((card) => (
-              <View key={card.id} style={styles.cell}>
-                <AACCardItem
+              <View key={card.position} style={styles.cell}>
+                <TileCardWorkspaceItem
                   card={card}
                   onSelect={handleCardTap}
-                  isSpeaking={speakingCardId === card.id}
+                  isSpeaking={speakingPosition === card.position}
                   highContrast={highContrast}
                   showCardLabels={baseSettings.showCardLabels !== false}
                 />

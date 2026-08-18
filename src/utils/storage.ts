@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AACCard, BaseSettings } from '../types';
+import { BaseSettings } from '../types';
+import { TileCard, TileCardProps } from '../models/TileCard';
 import { INITIAL_18_CARDS } from '../data/defaultCards';
 
 const CARDS_STORAGE_KEY = 'Tap_To_Speak_Cards_v1';
@@ -13,13 +14,13 @@ export const DEFAULT_SETTINGS: BaseSettings = {
   highContrastMode: false,
 };
 
-export async function getStoredCards(): Promise<AACCard[]> {
+export async function getStoredCards(): Promise<TileCard[]> {
   try {
     const json = await AsyncStorage.getItem(CARDS_STORAGE_KEY);
     if (json) {
-      const parsed = JSON.parse(json) as AACCard[];
+      const parsed = JSON.parse(json) as TileCardProps[];
       if (Array.isArray(parsed) && parsed.length === 18) {
-        return parsed.sort((a, b) => a.position - b.position);
+        return parsed.map((props) => new TileCard(props)).sort((a, b) => a.position - b.position);
       }
     }
   } catch (e) {
@@ -29,7 +30,7 @@ export async function getStoredCards(): Promise<AACCard[]> {
   return INITIAL_18_CARDS;
 }
 
-export async function saveStoredCards(cards: AACCard[]): Promise<void> {
+export async function saveStoredCards(cards: TileCard[]): Promise<void> {
   try {
     await AsyncStorage.setItem(CARDS_STORAGE_KEY, JSON.stringify(cards));
   } catch (e) {
@@ -37,7 +38,7 @@ export async function saveStoredCards(cards: AACCard[]): Promise<void> {
   }
 }
 
-export async function resetCardsToDefault(): Promise<AACCard[]> {
+export async function resetCardsToDefault(): Promise<TileCard[]> {
   await saveStoredCards(INITIAL_18_CARDS);
   return INITIAL_18_CARDS;
 }

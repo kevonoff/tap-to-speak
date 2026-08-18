@@ -2,72 +2,85 @@ import { createAudioPlayer, AudioPlayer } from 'expo-audio';
 import * as Speech from 'expo-speech';
 import * as Haptics from 'expo-haptics';
 import { BaseSettings } from '../types';
+import type { EventSubscription } from 'expo-modules-core'; 
 
 let currentPlayer: AudioPlayer | null = null;
 
-function stopCurrent() {
-  if (currentPlayer) {
-    try {
-      currentPlayer.pause();
-      currentPlayer.remove();
-    } catch {
-      // Ignore if already released
-    }
-    currentPlayer = null;
-  }
-  Speech.stop();
-}
-
-export function speakAACCard(
-  spokenText: string,
+export function playAudio(
+  spokenText: string | null | undefined,
   audioUri: string | null | undefined,
   settings?: BaseSettings,
   onStart?: () => void,
   onEnd?: () => void
 ) {
-  stopCurrent();
 
-  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {
-    // Ignore if not supported
-  });
-
-  // Priority 1: If user recorded custom voice for this card, play recorded voice!
   if (audioUri) {
-    try {
-      const player = createAudioPlayer(audioUri);
-      currentPlayer = player;
-      onStart?.();
-
-      const subscription = player.addListener('playbackStatusUpdate', (status) => {
-        if (status.didJustFinish) {
-          subscription.remove();
-          player.remove();
-          if (currentPlayer === player) currentPlayer = null;
-          onEnd?.();
-        }
-      });
-
-      player.play();
-      return;
-    } catch (e) {
-      console.warn('Playback error for custom audio, using TTS:', e);
-      currentPlayer = null;
-    }
+    playRecordedAudio(audioUri, onStart, onEnd, () => saySpokenText(spokenText, settings, onStart, onEnd));
+  } else {
+    saySpokenText(spokenText, settings, onStart, onEnd);
   }
-
-  // Priority 2: Use Speech Synthesis (TTS)
-  speakTextTTS(spokenText, settings, onStart, onEnd);
 }
 
-export function speakTextTTS(
-  text: string,
+export function playRecordedAudio(
+  audioUri: string | null | undefined,
+  onStart?: () => void,
+  onEnd?: () => void,
+  onError?: () => void
+) {
+
+  let subscription: EventSubscription | null = null;
+
+  try {
+    currentPlayer?.pause();
+    currentPlayer?.remove();
+    currentPlayer = null;
+    Speech.stop();
+    
+    const player = createAudioPlayer(audioUri);
+    currentPlayer = player;
+    onStart?.();
+
+    const sub = player.addListener('playbackStatusUpdate', (status) => {
+      
+      if (status.didJustFinish) {
+        subscription?.remove();
+        player?.pause();
+        player?.remove();
+        if (currentPlayer === player) currentPlayer = null;
+        onEnd?.();
+      }
+    });
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {
+      // Ignore if not supported (e.g., in iOS/Android simulators or unsupported hardware)
+    });
+    
+    subscription = sub;
+
+    player.play();
+    return;
+  } catch (e) {
+    console.error('Playback error for custom audio', e);
+    currentPlayer?.pause();
+    currentPlayer?.remove();
+    subscription?.remove();
+    currentPlayer = null;
+    onError?.();
+  }
+}
+
+export function saySpokenText(
+  text: string | null | undefined,
   settings?: BaseSettings,
   onStart?: () => void,
   onEnd?: () => void
 ) {
-  Speech.stop();
 
-  Speech.speak(text, {
+  currentPlayer?.pause();
+  currentPlayer?.remove();
+  currentPlayer = null;
+  Speech.stop()
+  Speech.speak(text ? text : "Please record your voice, or use the T.T.S feature.", {
     rate: settings?.rate ?? 0.85,
     pitch: settings?.pitch ?? 1.0,
     volume: settings?.volume ?? 1.0,
@@ -77,12 +90,4 @@ export function speakTextTTS(
     onStopped: () => onEnd?.(),
     onError: () => onEnd?.(),
   });
-}
-
-export async function getAvailableVoices(): Promise<Speech.Voice[]> {
-  try {
-    return await Speech.getAvailableVoicesAsync();
-  } catch {
-    return [];
-  }
 }

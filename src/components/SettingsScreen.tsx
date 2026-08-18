@@ -2,17 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, StyleSheet, Alert } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
-import { AACCard, BaseSettings } from '../types';
-import { getAvailableVoices, speakTextTTS } from '../utils/audio';
+import { BaseSettings } from '../types';
+import { TileCard } from '../models/TileCard';
 import { CardImage } from './CardImage';
 import { CardEditorModal } from './CardEditorModal';
+import * as Speech  from 'expo-speech';
 import type { Voice } from 'expo-speech';
 import { useAuth } from '../context/AuthContext';
 import { getColorTheme } from '../utils/cardTheme';
+import { saySpokenText } from '../utils/audio'
 
 interface SettingsScreenProps {
-  cards: AACCard[];
-  onUpdateCard: (updatedCard: AACCard) => void;
+  cards: TileCard[];
+  onUpdateCard: (updatedCard: TileCard) => void;
   baseSettings: BaseSettings;
   onUpdateSettings: (newSettings: BaseSettings) => void;
   onResetCards: () => void;
@@ -22,14 +24,14 @@ interface SettingsScreenProps {
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   cards,
   onUpdateCard,
-  baseSettings: baseSettings,
+  baseSettings,
   onUpdateSettings,
   onResetCards,
   onBack,
 }) => {
   const [settings, setSettings] = useState<BaseSettings>(baseSettings);
   const [voices, setVoices] = useState<Voice[]>([]);
-  const [selectedCardForEdit, setSelectedCardForEdit] = useState<AACCard | null>(null);
+  const [selectedCardForEdit, setSelectedCardForEdit] = useState<TileCard | null>(null);
   const { user, signOut } = useAuth();
 
   const handleSignOut = () => {
@@ -40,8 +42,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   };
 
   useEffect(() => {
-    getAvailableVoices().then(setVoices);
-  }, []);
+    Speech.getAvailableVoicesAsync()
+    .then(
+      (voices: Speech.Voice[])=> {
+        setVoices(voices)
+      }
+    )}, []);
 
   const handleChange = <K extends keyof BaseSettings>(key: K, value: BaseSettings[K]) => {
     const updated = { ...settings, [key]: value };
@@ -50,7 +56,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   };
 
   const handleTestVoice = () => {
-    speakTextTTS('Hello! This is a test of your AAC voice settings.', settings);
+    saySpokenText('Hello! This is a test of your AAC voice settings.', settings);
   };
 
   const handleReset = () => {
@@ -63,6 +69,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       ]
     );
   };
+
+  
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -85,7 +93,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             const theme = getColorTheme(card.bgColor);
             return (
               <Pressable
-                key={card.id}
+                key={card.position}
                 onPress={() => setSelectedCardForEdit(card)}
                 style={[styles.tile, { backgroundColor: theme.bg, borderColor: theme.border }]}
               >
@@ -108,7 +116,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 </View>
 
                 <Text style={styles.tileLabel} numberOfLines={1}>
-                  {card.label}
+                  {card.displayLabel}
                 </Text>
               </Pressable>
             );
@@ -268,10 +276,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           card={selectedCardForEdit}
           isOpen={!!selectedCardForEdit}
           onClose={() => setSelectedCardForEdit(null)}
-          onSave={(updatedCard) => {
-            onUpdateCard(updatedCard);
-            setSelectedCardForEdit(null);
-          }}
+          onSave={onUpdateCard}
         />
       )}
     </ScrollView>

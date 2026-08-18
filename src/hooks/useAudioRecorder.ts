@@ -11,10 +11,9 @@ import {
 export function useAudioRecorder(initialUri: string | null = null) {
   const recorder = useExpoAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder, 250);
-
   const [audioUri, setAudioUri] = useState<string | null>(initialUri);
   const [error, setError] = useState<string | null>(null);
-
+  
   const startRecording = useCallback(async () => {
     setError(null);
     try {

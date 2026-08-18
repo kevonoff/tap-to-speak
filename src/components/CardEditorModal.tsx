@@ -11,19 +11,20 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AACCard } from '../types';
+import { CardMedia, TileCard } from '../models/TileCard';
 import { INITIAL_18_CARDS } from '../data/defaultCards';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
-import { speakTextTTS } from '../utils/audio';
-import { persistCardImageToLocalFilesystem, persistCardAudioToLocalFilesystem as persistCardAudioToLocalFilesystem } from '../utils/localStorage';
+import { persistCardImageToLocalFilesystem, persistCardAudioToLocalFilesystem } from '../utils/localStorage';
 import { CardImage } from './CardImage';
-import { ImagePickerMenu } from './ImagePickerMenu'
+import { ImagePickerMenu } from './ImagePickerMenu';
+import { saySpokenText } from '../utils/audio';
+import { getBaseSettings } from '../utils/storage';
 
 interface CardEditorModalProps {
-  card: AACCard;
+  card: TileCard;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updatedCard: AACCard) => void;
+  onSave: (updatedCard: TileCard) => void;
 }
 
 const COLOR_OPTIONS = [
@@ -43,9 +44,9 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
 }) => {
   const [label, setLabel] = useState(card.label);
   const [spokenText, setSpokenText] = useState(card.spokenText || card.label);
-  const [imageUri, setImageUri] = useState(card.imageUri);
-  const [bgColor, setBgColor] = useState(card.bgColor || '#3B82F6');
-  const [audioMode, setAudioMode] = useState<'tts' | 'recorded'>(card.audioUri ? 'recorded' : 'tts');
+  const [image, setImage] = useState<CardMedia>(card.image);
+  const [bgColor, setBgColor] = useState(card.bgColor);
+  const [audioMode, setAudioMode] = useState<'tts' | 'recorded'>(card.hasRecording ? 'recorded' : 'tts');
   const insets = useSafeAreaInsets();
 
   const {
@@ -57,7 +58,7 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
     stopRecording,
     clearRecording,
     playPreview,
-  } = useAudioRecorder(card.audioUri || null);
+  } = useAudioRecorder(card.audioUri);
 
   // Every edit auto-saves as it happens — there's no separate Save button.
   // Callers pass only the field(s) that just changed; everything else falls
@@ -65,19 +66,18 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
   // the event itself (not from state) to avoid acting on a stale value from
   // before this render's setState took effect.
   const commitCard = (
-    overrides: Partial<Pick<AACCard, 'label' | 'spokenText' | 'imageUri' | 'audioUri' | 'bgColor'>> = {}
+    overrides: Partial<Pick<TileCard, 'label' | 'spokenText' | 'image' | 'audio' | 'bgColor'>> = {}
   ) => {
     const finalLabel = overrides.label ?? label;
-    const finalSpokenText = overrides.spokenText ?? spokenText;
-    const updatedCard: AACCard = {
-      ...card,
-      label: finalLabel.trim() || 'Custom Card',
-      spokenText: finalSpokenText.trim() || finalLabel.trim() || 'Custom Card',
-      imageUri: overrides.imageUri ?? imageUri,
-      audioUri: 'audioUri' in overrides ? overrides.audioUri ?? null : audioMode === 'recorded' ? audioUri : null,
-      bgColor: overrides.bgColor ?? bgColor,
-    };
-    onSave(updatedCard);
+    onSave(
+      card.with({
+        label: finalLabel,
+        spokenText: overrides.spokenText ?? spokenText ?? finalLabel,
+        image: overrides.image ?? image,
+        audio: 'audio' in overrides ? overrides.audio ?? null : audioMode === 'recorded' && audioUri ? TileCard.device(audioUri) : null,
+        bgColor: overrides.bgColor ?? bgColor,
+      })
+    );
   };
 
   // Safety net for the two text fields: onBlur covers the normal case, but
@@ -94,9 +94,11 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
   const handlePickPhoto = async (uri: string) => {
     if (uri) {
       try {
+
         const persisted = persistCardImageToLocalFilesystem(uri, card.position);
-        setImageUri(persisted);
-        commitCard({ imageUri: persisted });
+        const media = TileCard.device(persisted);
+        setImage(media);
+        commitCard({ image: media });
       } catch (err) {
         console.warn('Failed to save picked photo:', err);
         Alert.alert('Could not use that photo', 'Please try picking the photo again.');
@@ -104,21 +106,23 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
     }
   };
 
-  const handleTestTTS = () => {
-    speakTextTTS(spokenText || label);
+   const handleTestTTS = async () => {
+    saySpokenText(
+      spokenText,
+      await getBaseSettings());
   };
 
   const handleStopRecording = async () => {
     const uri = await stopRecording();
     if (uri) {
       const persisted = persistCardAudioToLocalFilesystem(uri, card.position);
-      commitCard({ audioUri: persisted });
+      commitCard({ audio: TileCard.device(persisted) });
     }
   };
 
   const handleClearRecording = () => {
     clearRecording();
-    commitCard({ audioUri: null });
+    commitCard({ audio: null });
   };
 
   return (
@@ -162,27 +166,27 @@ export const CardEditorModal: React.FC<CardEditorModalProps> = ({
 
           <View style={styles.imagePreviewRow}>
             <View style={[styles.imagePreviewBox, { borderColor: bgColor }]}>
-              <CardImage uri={imageUri} />
+              <CardImage uri={image.uri} />
             </View>
             <Text style={styles.imagePreviewHint}>
               Pick a photo from your device, or choose one of the built-in symbols below.
             </Text>
           </View>
 
-          <ImagePickerMenu onSelectPicture={(uri: string) => { handlePickPhoto(uri)}}></ImagePickerMenu>
+          <ImagePickerMenu onSelectPicture={handlePickPhoto} />
 
           <Text style={styles.fieldLabel}>Or Choose a Built-in Symbol</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {INITIAL_18_CARDS.map((preset) => (
               <Pressable
-                key={preset.id}
+                key={preset.position}
                 onPress={() => {
-                  setImageUri(preset.imageUri);
-                  commitCard({ imageUri: preset.imageUri });
+                  setImage(preset.image);
+                  commitCard({ image: preset.image });
                 }}
                 style={[
                   styles.presetThumb,
-                  imageUri === preset.imageUri && styles.presetThumbActive,
+                  image.uri === preset.image.uri && styles.presetThumbActive,
                 ]}
               >
                 <CardImage uri={preset.imageUri} />

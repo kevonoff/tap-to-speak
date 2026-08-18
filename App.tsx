@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { AACCard, BaseSettings, ActiveScreen } from './src/types';
+import { BaseSettings, ActiveScreen } from './src/types';
+import { TileCard } from './src/models/TileCard';
 import {
   getStoredCards,
   saveStoredCards,
@@ -19,7 +20,7 @@ import { AuthScreen } from './src/components/AuthScreen';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 
 function AppContent() {
-  const [cards, setCards] = useState<AACCard[]>([]);
+  const [cards, setCards] = useState<TileCard[]>([]);
   const [baseSettings, setBaseSettings] = useState<BaseSettings>(DEFAULT_SETTINGS);
   const [activeScreen, setActiveScreen] = useState<ActiveScreen>('workspace');
   const [isLoading, setIsLoading] = useState(true);
@@ -47,8 +48,8 @@ function AppContent() {
       .finally(() => setIsSyncingTiles(false));
   }, [isLoading, user, cards]);
 
-  const handleUpdateCard = (updatedCard: AACCard) => {
-    const newCards = cards.map((c) => (c.id === updatedCard.id ? updatedCard : c));
+  const handleUpdateCard = (updatedCard: TileCard) => {
+    const newCards = cards.map((c) => (c.position === updatedCard.position ? updatedCard : c));
     setCards(newCards);
     saveStoredCards(newCards);
     if (user) {
@@ -60,7 +61,7 @@ function AppContent() {
           // keeps trusting its local file instead of needlessly re-fetching it.
           setCards((prev) => {
             const stamped = prev.map((c) =>
-              c.position === updatedCard.position ? { ...c, lastSyncedUpdatedAt: updatedAt } : c
+              c.position === updatedCard.position ? c.with({ lastSyncedUpdatedAt: updatedAt }) : c
             );
             saveStoredCards(stamped);
             return stamped;
@@ -84,10 +85,9 @@ function AppContent() {
       pushCardsToSupabase(user.id, defaultCards)
         .then((updatedAtByPosition) => {
           setCards((prev) => {
-            const stamped = prev.map((c) => ({
-              ...c,
-              lastSyncedUpdatedAt: updatedAtByPosition.get(c.position) ?? c.lastSyncedUpdatedAt,
-            }));
+            const stamped = prev.map((c) =>
+              c.with({ lastSyncedUpdatedAt: updatedAtByPosition.get(c.position) ?? c.lastSyncedUpdatedAt })
+            );
             saveStoredCards(stamped);
             return stamped;
           });

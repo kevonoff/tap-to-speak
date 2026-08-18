@@ -1,18 +1,18 @@
 import React from 'react';
 import { Pressable, View, Text, StyleSheet } from 'react-native';
-import { AACCard } from '../types';
+import { TileCard } from '../models/TileCard';
 import { CardImage } from './CardImage';
 import { getColorTheme } from '../utils/cardTheme';
 
-interface AACCardItemProps {
-  card: AACCard;
-  onSelect: (card: AACCard) => void;
+interface TileCardItemProps {
+  card: TileCard;
+  onSelect: (card: TileCard) => void;
   isSpeaking: boolean;
   highContrast?: boolean;
   showCardLabels?: boolean;
 }
 
-export const AACCardItem: React.FC<AACCardItemProps> = ({
+export const TileCardWorkspaceItem: React.FC<TileCardItemProps> = ({
   card,
   onSelect,
   isSpeaking,
@@ -40,7 +40,7 @@ export const AACCardItem: React.FC<AACCardItemProps> = ({
       {showCardLabels && (
         <View style={styles.labelWrap}>
           <Text style={[styles.label, { color: textColor }]} numberOfLines={1}>
-            {card.label}
+            {card.displayLabel}
           </Text>
         </View>
       )}
