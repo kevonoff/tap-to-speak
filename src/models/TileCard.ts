@@ -22,7 +22,7 @@ import { playRecordedAudio, saySpokenText } from '../utils/audio';
 export type MediaKind = 'device' | 'hosted';
 export type CardCategory = 'need' | 'feeling' | 'action' | 'person' | 'social';
 const DEFAULT_BG_COLOR = '#3B82F6';
-const UNTITLED_LABEL = 'Missing Label/Title';
+const UNTITLED_LABEL = 'Unlabeled';
 
 export interface CardMedia {
   readonly kind: MediaKind;
@@ -108,7 +108,7 @@ export class TileCard {
     onStart?: () => void,
     onEnd?: () => void
   ) {
-    if (this.audioUri) {
+    if (this.hasRecording) {
       playRecordedAudio(this.audioUri, onStart, onEnd, () => saySpokenText(this.spokenText, baseSettings, onStart, onEnd));
     } else {
       saySpokenText(this.spokenText, baseSettings, onStart, onEnd);

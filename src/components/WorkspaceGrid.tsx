@@ -17,25 +17,28 @@ export const WorkspaceGrid: React.FC<WorkspaceGridProps> = ({
 }) => {
   const { width, height } = useWindowDimensions();
   // Landscape tablets get a wide 6x3 layout; portrait phones get 3x6, same
-  // responsive swap the original web grid used.
-  const columns = width > height ? 6 : 3;
-  const rows = 18 / columns;
+  // responsive swap the original web grid used. Both totals are always 18 —
+  // spelled out directly rather than derived (18 / columns) so the two
+  // layouts are legible without doing the division in your head.
+  const isLandscape = width > height;
+  const columns = isLandscape ? 6 : 3;
+  const rows = isLandscape ? 3 : 6;
 
   const [speakingPosition, setSpeakingPosition] = useState<number | null>(null);
-  const [activeCardText, setActiveCardText] = useState<string | null>(null);
+  const [spokenWordsModalText, setSpokenWordsModalText] = useState<string | null>(null);
 
   const handleCardTap = (card: TileCard) => {
     setSpeakingPosition(card.position);
     // Only show the caption toast for TTS playback — a pre-recorded voice
     // message doesn't need its text echoed on screen.
-    setActiveCardText(card.hasRecording ? null : card.displaySpokenText);
+    setSpokenWordsModalText(card.hasRecording ? null : card.displaySpokenText);
 
     card.PlayAudio(
       baseSettings,
       () => setSpeakingPosition(card.position),
       () => {
         setSpeakingPosition(null);
-        setActiveCardText(null);
+        setSpokenWordsModalText(null);
       }
     
     );
@@ -66,10 +69,10 @@ export const WorkspaceGrid: React.FC<WorkspaceGridProps> = ({
         ))}
       </View>
 
-      {activeCardText && (
+      {spokenWordsModalText && (
         <View style={styles.toast}>
           <Text style={styles.toastText} numberOfLines={1}>
-            &quot;{activeCardText}&quot;
+            &quot;{spokenWordsModalText}&quot;
           </Text>
         </View>
       )}
